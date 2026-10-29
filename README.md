@@ -1,4 +1,4 @@
-# Basic LangGraph Chatbot
+# Basic LangGraph Chatbot with Streaming
 
 A small Python chatbot application powered by LangGraph, LangChain, and
 OpenRouter. The project provides three interfaces:
@@ -93,6 +93,14 @@ instead of waiting for the complete response.
 The original `streamlit_frontend.py` waits for the complete response. Use
 `streaming_chatbot.py` when you want the assistant text to appear progressively
 while the model is generating it.
+
+## Chat Message Image
+<img width="619" height="551" alt="image" src="https://github.com/user-attachments/assets/8e0e7cd5-b1a5-47d0-8a82-80e3febca6a3" />
+<img width="634" height="411" alt="image" src="https://github.com/user-attachments/assets/47e947b5-62b9-41eb-a191-a3603181b545" />
+<img width="641" height="485" alt="image" src="https://github.com/user-attachments/assets/ed4e311e-74e7-40e1-b62b-e63ed6f1a429" />
+
+
+
 
 ## Requirements
 
@@ -437,7 +445,3 @@ include:
 - Add input validation, rate limiting, and usage monitoring for deployment.
 - Add deployment instructions for Streamlit Community Cloud or another host.
 
-## License
-
-No license has been specified for this project. Add a license file before
-distributing the project or publishing it as open source.
