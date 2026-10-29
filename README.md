@@ -1,9 +1,11 @@
 # Basic LangGraph Chatbot
 
 A small Python chatbot application powered by LangGraph, LangChain, and
-OpenRouter. The project provides two interfaces:
+OpenRouter. The project provides three interfaces:
 
 - A browser-based chat interface built with Streamlit.
+- A browser-based streaming chat interface that displays response chunks as
+  they arrive.
 - An interactive command-line interface for terminal use.
 
 The chatbot sends messages to the OpenRouter API through
@@ -14,6 +16,7 @@ in-memory checkpointer.
 
 - Chat with an OpenRouter-hosted language model.
 - Streamlit chat interface with user and assistant message history.
+- Token-by-token response streaming with LangGraph and Streamlit.
 - Command-line chat interface.
 - LangGraph state management.
 - In-memory conversation checkpointing.
@@ -26,6 +29,7 @@ in-memory checkpointer.
 chatbot/
 ├── Basic_chabot.py          # Chatbot backend and command-line interface
 ├── streamlit_frontend.py    # Streamlit browser interface
+├── streaming_chatbot.py     # Standalone streaming Streamlit interface
 ├── requirements.txt         # Python dependencies
 ├── .env                     # Local environment variables; do not commit
 ├── .vscode/
@@ -71,6 +75,13 @@ User
 5. The model response is added to the graph state.
 6. `MemorySaver` stores state in memory for the configured thread.
 
+### Streaming flow
+
+`streaming_chatbot.py` enables streaming on `ChatOpenRouter` and reads the
+graph with `stream_mode="messages"`. Its `stream_response()` generator yields
+text chunks, and Streamlit's `st.write_stream()` renders them immediately
+instead of waiting for the complete response.
+
 ### Frontend flow
 
 1. Streamlit imports the compiled `chatbot` graph.
@@ -78,6 +89,10 @@ User
 3. The user submits a message through `st.chat_input`.
 4. The message is sent to the backend graph using the `streamlit` thread.
 5. The assistant response is displayed in the chat window.
+
+The original `streamlit_frontend.py` waits for the complete response. Use
+`streaming_chatbot.py` when you want the assistant text to appear progressively
+while the model is generating it.
 
 ## Requirements
 
@@ -180,6 +195,26 @@ From the project directory, with the virtual environment activated, run:
 streamlit run streamlit_frontend.py
 ```
 
+## Running the Streaming Application
+
+The standalone streaming interface is in `streaming_chatbot.py`. Run it from
+the project directory:
+
+```bash
+streamlit run streaming_chatbot.py
+```
+
+Or use the local virtual environment directly:
+
+```bash
+/home/ali-abbas/Desktop/chatbot/venv/bin/streamlit run \
+  /home/ali-abbas/Desktop/chatbot/streaming_chatbot.py
+```
+
+The streaming app enables `streaming=True` on the OpenRouter model, consumes
+LangGraph message chunks, and passes them to `st.write_stream()`. Open
+`http://localhost:8501` if Streamlit does not open a browser automatically.
+
 Or use the project environment directly without activating it:
 
 ```bash
@@ -234,13 +269,6 @@ The displayed message history is stored in Streamlit session state. The
 LangGraph checkpointer is in-memory, so conversation data is lost when the
 application process restarts.
 
-
-## Chat Screen Image
-
-<img width="687" height="522" alt="Screenshot From 2026-10-28 22-04-31" src="https://github.com/user-attachments/assets/54482459-cbc1-419f-a7b0-1449bfde153e" />
-<img width="707" height="528" alt="Screenshot From 2026-10-28 22-06-35" src="https://github.com/user-attachments/assets/d90ec0c2-ff65-4a55-b51d-fd4eda2d916a" />
-
-
 ## Dependency Overview
 
 The main dependencies are:
@@ -280,13 +308,118 @@ class ChatState(TypedDict):
 The `thread_id` identifies a conversation checkpoint. The current application
 uses `streamlit` for the web interface and `cli` for the terminal interface.
 
+### Streaming API
 
+The streaming interface exposes a generator that yields assistant text
+chunks:
+
+```python
+from streaming_chatbot import stream_response
+
+for chunk in stream_response("Tell me about LangGraph"):
+    print(chunk, end="", flush=True)
+```
+
+The Streamlit interface renders the generator progressively:
+
+```python
+st.write_stream(stream_response(user_input))
+```
+
+## Troubleshooting
+
+### `ModuleNotFoundError: No module named 'streamlit'`
+
+Install Streamlit in the same environment used to run the application:
+
+```bash
+python -m pip install streamlit
+```
+
+If the project uses its local environment:
+
+```bash
+/home/ali-abbas/Desktop/chatbot/venv/bin/python -m pip install streamlit
+```
+
+### `ModuleNotFoundError: No module named 'Basic_chatbot'`
+
+The backend file is named `Basic_chabot.py` (with `chabot`, not `chatbot`).
+Run Streamlit from the project root so Python can import the backend:
+
+```bash
+cd /home/ali-abbas/Desktop/chatbot
+streamlit run streamlit_frontend.py
+```
+
+### `Set OPENROUTER_API_KEY ... in the .env file`
+
+Create or update `.env` in the project root:
+
+```dotenv
+OPENROUTER_API_KEY=your_openrouter_api_key
+```
+
+Restart Streamlit after changing environment variables.
+
+### OpenRouter authentication or request errors
+
+Check the following:
+
+- The API key is valid and has not been revoked.
+- The account has sufficient credits or an available payment method.
+- The model name is supported by OpenRouter.
+- The machine has internet access.
+- The `.env` file has no extra quotes or accidental spaces.
+
+You can select a different model with:
+
+```dotenv
+OPENROUTER_MODEL=your-provider/your-model
+```
+
+### Port `8501` is already in use
+
+Start Streamlit on another port:
+
+```bash
+streamlit run streamlit_frontend.py --server.port 8502
+```
+
+Then open `http://localhost:8502`.
 
 ### Conversation history disappears
 
 This project uses in-memory storage. History is cleared when the Streamlit
 session or Python process restarts. Persistent history would require a
 database or another durable LangGraph checkpointer.
+
+### Python or dependency compatibility warnings
+
+Use the project's virtual environment and reinstall dependencies:
+
+```bash
+python -m pip install --upgrade -r requirements.txt
+```
+
+If dependency resolution fails, use a supported Python version such as Python
+3.11 or Python 3.12 and create a fresh virtual environment.
+
+## Development Checks
+
+Check Python syntax before running the application:
+
+```bash
+python -m py_compile Basic_chabot.py streamlit_frontend.py streaming_chatbot.py
+```
+
+Verify that the backend can be imported without starting the terminal loop:
+
+```bash
+python -c "import Basic_chabot; print('backend import ok')"
+```
+
+Start Streamlit and confirm that it responds at `http://localhost:8501`.
 
 ## Limitations and Future Improvements
 
@@ -301,7 +434,10 @@ include:
 - Use a unique thread ID per browser session.
 - Persist conversations in a database or durable LangGraph checkpointer.
 - Add automated tests for graph invocation and frontend integration.
-- Add streaming token responses for a more interactive experience.
 - Add input validation, rate limiting, and usage monitoring for deployment.
 - Add deployment instructions for Streamlit Community Cloud or another host.
 
+## License
+
+No license has been specified for this project. Add a license file before
+distributing the project or publishing it as open source.
